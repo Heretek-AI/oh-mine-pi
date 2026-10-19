@@ -1,0 +1,108 @@
+name: oh-mine-pi-swarm
+# Locked decisions: audit/DECISIONS.md (grill phase 2026-10-19).
+# Topology: host-pi agents + disposable RE/QA sidecars. IPC: pi-fabric mesh
+# (exec-stdio shim fallback). Secrets: runtime env only, never baked.
+# ZeroTier services (SearXNG/Firecrawl/Crawl4AI) are EXTERNAL — env only.
+
+x-pi-base: &pi-base
+  build:
+    context: ./images/pi-swarm
+    args:
+      BASE_IMAGE: ${BASE_IMAGE:-ghcr.io/heretek-ai/oh-mine-pi:latest}
+      PI_VERSION: ${PI_VERSION:-latest}
+  image: oh-mine-pi-swarm:local
+  stdin_open: true
+  tty: true
+  volumes:
+    - ../workspace:/workspace
+    - ./targets:/targets:ro
+  env_file:
+    - .env
+
+services:
+  pi-coordinator:
+    <<: *pi-base
+    container_name: swarm-coordinator
+    hostname: coordinator
+    environment:
+      ROLE: coordinator
+      PI_EXTENSIONS: ${COORDINATOR_EXTENSIONS:-npm:pi-subagents npm:pi-goal-x npm:pi-fabric npm:pi-sessions npm:pi-multi-account npm:pi-router npm:pi-bifrost npm:@billjr99/pi-openai-compat}
+      OPENCODE_GO_API_KEY: ${OPENCODE_GO_API_KEY:?set in swarm/.env}
+    volumes:
+      - pi-home-coordinator:/home/pi
+      - swarm-memory:/memory
+      - /var/run/docker.sock:/var/run/docker.sock # exec-stdio shims into sidecars (root-equiv: coordinator only)
+    command: ["pi"]
+
+  pi-researcher:
+    <<: *pi-base
+    container_name: swarm-researcher
+    hostname: researcher
+    environment:
+      ROLE: researcher
+      PI_EXTENSIONS: ${RESEARCHER_EXTENSIONS:-npm:pi-deep-research npm:@parallel-web/pi-extension}
+      SEARCH_PROVIDERS: ${SEARCH_PROVIDERS:-searxng,crawl4ai,firecrawl}
+      SEARXNG_BASE_URL: ${SEARXNG_BASE_URL:?set in swarm/.env}
+      FIRECRAWL_BASE_URL: ${FIRECRAWL_BASE_URL:?set in swarm/.env}
+      FIRECRAWL_API_VERSION: ${FIRECRAWL_API_VERSION:-v1}
+      CRAWL4AI_BASE_URL: ${CRAWL4AI_BASE_URL:?set in swarm/.env}
+      CRAWL4AI_API_TOKEN: ${CRAWL4AI_API_TOKEN:?set in swarm/.env}
+    volumes:
+      - pi-home-researcher:/home/pi
+      - swarm-memory:/memory
+    command: ["pi"]
+
+  pi-qa:
+    <<: *pi-base
+    container_name: swarm-qa
+    hostname: qa
+    environment:
+      ROLE: qa
+      PI_EXTENSIONS: ${QA_EXTENSIONS:-npm:pi-sessions}
+      SEMGREP_APP_TOKEN: ${SEMGREP_APP_TOKEN:-}
+    volumes:
+      - pi-home-qa:/home/pi
+      - swarm-memory:/memory
+      - /var/run/docker.sock:/var/run/docker.sock # on-demand `docker run semgrep/semgrep` scans
+    command: ["pi"]
+
+  pi-tester:
+    <<: *pi-base
+    container_name: swarm-tester
+    hostname: tester
+    environment:
+      ROLE: tester
+    volumes:
+      - pi-home-tester:/home/pi
+      - swarm-memory:/memory
+      - /var/run/docker.sock:/var/run/docker.sock # container healthchecks via docker CLI
+    command: ["pi"]
+
+  # --- Disposable RE sidecars (profile: re). Prefer `run --rm` per job. ---
+  rea:
+    image: ${REA_IMAGE:-ghcr.io/alexmi256/rea-agent:latest}
+    container_name: swarm-rea
+    profiles: ["re"]
+    volumes:
+      - ./targets:/targets:ro
+    command: ["sleep", "infinity"] # driven via `docker exec -i swarm-rea rea mcp` (see bin/rea-stdio-shim.sh)
+    # Fallback published image: psyb0t/reverse-engineer-anything (token-HTTP included).
+    # Fallback self-build: Heretek-AI/re-box + audit §5 delta (acceptance gates, multi-GB build).
+
+  mobsf:
+    image: ${MOBSF_IMAGE:-opensecurity/mobile-security-framework-mobsf:latest}
+    container_name: swarm-mobsf
+    profiles: ["re"]
+    ports:
+      - "127.0.0.1:8000:8000" # loopback only; pi-qa reaches it via http://mobsf:8000
+    volumes:
+      - mobsf-data:/root/.MobSF
+      - ./targets:/targets:ro
+
+volumes:
+  pi-home-coordinator:
+  pi-home-researcher:
+  pi-home-qa:
+  pi-home-tester:
+  swarm-memory: # file-backed ledger (server-memory/sqlite), shared by all agents
+  mobsf-data:

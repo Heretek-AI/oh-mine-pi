@@ -1,0 +1,2 @@
+Drop RE targets here. Bind-mounted read-only into every swarm service at /targets.
+Never write agent output here — analysis artifacts stay on the role volumes.

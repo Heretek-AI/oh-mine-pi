@@ -1,0 +1,5 @@
+{
+  "semgrep": {
+    "command": ["docker", "run", "-i", "--rm", "semgrep/semgrep", "semgrep", "mcp", "-t", "stdio"]
+  }
+}

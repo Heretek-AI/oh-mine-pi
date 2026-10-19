@@ -2,4 +2,8 @@
 __pycache__/
 *.pyc
 .env
+.env
 pi-home/
+review/
+.agents/
+skills-lock.json

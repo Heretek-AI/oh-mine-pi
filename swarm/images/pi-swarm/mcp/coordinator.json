@@ -1,0 +1,8 @@
+{
+  "rea": {
+    "command": ["docker", "exec", "-i", "swarm-rea", "rea", "mcp"]
+  },
+  "semgrep": {
+    "command": ["docker", "run", "-i", "--rm", "semgrep/semgrep", "semgrep", "mcp", "-t", "stdio"]
+  }
+}
