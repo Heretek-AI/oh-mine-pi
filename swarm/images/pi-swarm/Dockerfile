@@ -9,11 +9,14 @@ ARG PI_VERSION=latest
 ENV ROLE=coordinator
 
 USER root
+# docker.io (Debian's name for the Docker CLI+daemon bundle; there is no
+# `docker-cli` package on stock bookworm) powers exec-stdio shims +
+# healthchecks via the mounted socket. Daemon binaries ship but never run.
 RUN set -eux; \
     apt-get update; \
-    apt-get install -y --no-install-recommends docker-cli gettext-base; \
+    apt-get install -y --no-install-recommends docker.io gettext-base; \
     rm -rf /var/lib/apt/lists/*
-# docker-cli: exec-stdio shims + healthchecks via mounted socket (qa/tester/coordinator).
+# docker.io: exec-stdio shims + healthchecks via mounted socket (qa/tester/coordinator).
 # gettext-base: envsubst for role mcp.json templating in the entrypoint.
 
 COPY mcp/ /etc/pi-swarm/mcp/
