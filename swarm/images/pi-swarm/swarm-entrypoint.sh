@@ -49,4 +49,6 @@ fi
 
 seed_files
 install_extensions
-exec pi "$@"
+# Exec args raw (compose/CI pass `pi ...` explicitly). Wrapping in `pi` would
+# turn `whoami`-style probes into agent prompts requiring an API key.
+exec "$@"
