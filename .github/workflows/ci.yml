@@ -66,8 +66,11 @@ jobs:
           platforms: linux/amd64
           load: true
           tags: swarm-smoke:latest
+          # pi-smoke:latest was load:ed into docker by the previous step;
+          # expose it to buildx as a named context so FROM resolves locally.
+          build-contexts: base=docker-image://pi-smoke:latest
           build-args: |
-            BASE_IMAGE=pi-smoke:latest
+            BASE_IMAGE=base
             PI_VERSION=${{ env.PI_VERSION }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
