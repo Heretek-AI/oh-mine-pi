@@ -1,0 +1,32 @@
+# Minimal vanilla-pi run setup.
+# Persistence model (same idea as paseo/codeg/happier, scoped to pi):
+#   pi-home named volume -> /home/pi  (auth, sessions, skills, config)
+#   ./workspace bind mount -> /workspace (your code; also where `pi` starts)
+#
+# Usage:
+#   docker compose run --rm pi                 # interactive `pi --help` (default CMD)
+#   docker compose run --rm pi pi              # interactive pi session
+#   docker compose run --rm pi pi --version
+
+services:
+  pi:
+    build:
+      context: .
+      args:
+        # Pin for reproducible builds, e.g. PI_VERSION: "1.3.0"
+        PI_VERSION: ${PI_VERSION:-latest}
+    image: oh-mine-pi:local
+    container_name: oh-mine-pi
+    stdin_open: true
+    tty: true
+    volumes:
+      # Agent state persists across recreates (like codeg-data:/data).
+      - pi-home:/home/pi
+      # Code visible to pi (like paseo's ./workspace:/workspace).
+      - ./workspace:/workspace
+    working_dir: /workspace
+    # No ports: vanilla pi is a CLI, not a daemon (unlike paseo :6767,
+    # codeg :3080, happier relay :3005).
+
+volumes:
+  pi-home:

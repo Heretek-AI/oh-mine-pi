@@ -1,0 +1,2 @@
+# Keep shell entrypoints LF on Windows checkouts.
+*.sh text eol=lf
