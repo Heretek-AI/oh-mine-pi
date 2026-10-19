@@ -60,20 +60,15 @@ jobs:
           docker volume rm pi-home-smoke
 
       - name: Build swarm role image
-        uses: docker/build-push-action@v6
-        with:
-          context: ./swarm/images/pi-swarm
-          platforms: linux/amd64
-          load: true
-          tags: swarm-smoke:latest
-          # pi-smoke:latest was load:ed into docker by the previous step;
-          # expose it to buildx as a named context so FROM resolves locally.
-          build-contexts: base=docker-image://pi-smoke:latest
-          build-args: |
-            BASE_IMAGE=base
-            PI_VERSION=${{ env.PI_VERSION }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+        # Plain docker build (not buildx): pi-smoke:latest was load:ed into the
+        # daemon store by the previous step, which the container-driver buildx
+        # builder cannot see. The swarm layer is thin; no GHA cache needed.
+        run: |
+          set -euo pipefail
+          docker build -f swarm/images/pi-swarm/Dockerfile \
+            --build-arg BASE_IMAGE=pi-smoke:latest \
+            --build-arg PI_VERSION="${{ env.PI_VERSION }}" \
+            -t swarm-smoke:latest ./swarm/images/pi-swarm
 
       - name: Smoke test swarm image
         run: |
